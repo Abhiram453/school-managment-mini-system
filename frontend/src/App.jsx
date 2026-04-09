@@ -22,6 +22,10 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [selectedClass, setSelectedClass] = useState('');
+  const [isSignup, setIsSignup] = useState(false);
+  const [rememberMe, setRememberMe] = useState(localStorage.getItem('rememberMe') === 'true');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
@@ -75,12 +79,39 @@ function App() {
       setLoading(true);
       setError('');
 
+      if (isSignup) {
+        // Signup endpoint (would need backend support)
+        setError('Signup feature coming soon. Use demo accounts to test.');
+        setLoading(false);
+        return;
+      }
+
       const response = await api.post('/auth/login', authForm);
       localStorage.setItem('token', response.data.token);
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+        localStorage.setItem('rememberedUsername', authForm.username);
+      } else {
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('rememberedUsername');
+      }
       setToken(response.data.token);
       setUser({ username: response.data.username, role: response.data.role });
     } catch (loginError) {
       setError(loginError.response?.data?.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (event) => {
+    event.preventDefault();
+    try {
+      setLoading(true);
+      setError('');
+      // Placeholder for forgot password logic
+      setError('Password reset link would be sent to email. Feature coming soon.');
+      setShowForgotPassword(false);
     } finally {
       setLoading(false);
     }
@@ -180,8 +211,64 @@ function App() {
     }
   };
 
+  // FORGOT PASSWORD MODAL
+  if (showForgotPassword && !token) {
+    return (
+      <main className="auth-shell">
+        <section className="auth-layout">
+          <div className="auth-marketing">
+            <p className="eyebrow">Gridaan School Suite</p>
+            <h1>Password Recovery</h1>
+            <p className="subtitle">
+              Enter your email address and we'll send you a link to reset your password.
+            </p>
+          </div>
+
+          <form onSubmit={handleForgotPassword} className="auth-card">
+            <div className="auth-card-header">
+              <div>
+                <p className="eyebrow">Reset Password</p>
+                <h2>Recover Access</h2>
+              </div>
+            </div>
+
+            {error ? <p className="error-text">{error}</p> : null}
+
+            <label>
+              Email Address
+              <input
+                type="email"
+                value={forgotEmail}
+                onChange={(event) => setForgotEmail(event.target.value)}
+                placeholder="your@email.com"
+                required
+              />
+            </label>
+
+            <button type="submit" disabled={loading}>
+              {loading ? 'Sending...' : 'Send Reset Link'}
+            </button>
+
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={() => {
+                setShowForgotPassword(false);
+                setError('');
+              }}
+            >
+              Back to Login
+            </button>
+          </form>
+        </section>
+      </main>
+    );
+  }
+
   // LOGIN SCREEN
   if (!token) {
+    const rememberedUsername = localStorage.getItem('rememberedUsername') || '';
+
     return (
       <main className="auth-shell">
         <section className="auth-layout">
@@ -219,13 +306,17 @@ function App() {
           <form onSubmit={handleLogin} className="auth-card">
             <div className="auth-card-header">
               <div>
-                <p className="eyebrow">Login</p>
-                <h2>Welcome</h2>
+                <p className="eyebrow">{isSignup ? 'Sign Up' : 'Login'}</p>
+                <h2>{isSignup ? 'Create Account' : 'Welcome'}</h2>
               </div>
               <span className="session-badge">Secure session</span>
             </div>
 
-            <p className="subtitle">Enter your credentials to access your dashboard.</p>
+            <p className="subtitle">
+              {isSignup
+                ? 'Create a new account to get started.'
+                : 'Enter your credentials to access your dashboard.'}
+            </p>
 
             {error ? <p className="error-text">{error}</p> : null}
 
@@ -236,9 +327,21 @@ function App() {
                 onChange={(event) => setAuthForm((prev) => ({ ...prev, username: event.target.value }))}
                 placeholder="Enter username"
                 autoComplete="username"
+                defaultValue={rememberMe && !isSignup ? rememberedUsername : ''}
                 required
               />
             </label>
+
+            {isSignup ? (
+              <label>
+                Email Address
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  required
+                />
+              </label>
+            ) : null}
 
             <label>
               Password
@@ -248,7 +351,7 @@ function App() {
                   value={authForm.password}
                   onChange={(event) => setAuthForm((prev) => ({ ...prev, password: event.target.value }))}
                   placeholder="Enter password"
-                  autoComplete="current-password"
+                  autoComplete={isSignup ? 'new-password' : 'current-password'}
                   required
                 />
                 <button
@@ -261,9 +364,58 @@ function App() {
               </div>
             </label>
 
+            {!isSignup ? (
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(event) => setRememberMe(event.target.checked)}
+                />
+                <span>Remember me on this device</span>
+              </label>
+            ) : null}
+
             <button type="submit" disabled={loading || !readyToSignIn}>
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? (isSignup ? 'Creating...' : 'Signing in...') : isSignup ? 'Create Account' : 'Sign In'}
             </button>
+
+            <div className="auth-footer">
+              {!isSignup ? (
+                <>
+                  <button
+                    type="button"
+                    className="link-btn"
+                    onClick={() => setShowForgotPassword(true)}
+                  >
+                    Forgot password?
+                  </button>
+                  <span className="divider">•</span>
+                  <button
+                    type="button"
+                    className="link-btn"
+                    onClick={() => {
+                      setIsSignup(true);
+                      setAuthForm({ username: '', password: '' });
+                      setError('');
+                    }}
+                  >
+                    Sign up
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => {
+                    setIsSignup(false);
+                    setAuthForm({ username: '', password: '' });
+                    setError('');
+                  }}
+                >
+                  Back to login
+                </button>
+              )}
+            </div>
           </form>
         </section>
       </main>
