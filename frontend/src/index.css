@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700&display=swap');
+
+:root {
+  --bg: #eaf2f7;
+  --text-main: #0b2940;
+  --text-soft: #49657a;
+  --panel-bg: rgba(255, 255, 255, 0.9);
+  --panel-stroke: rgba(81, 126, 156, 0.26);
+  --field-stroke: #b9d0de;
+  --accent-1: #1776d2;
+  --accent-1-soft: #dceefe;
+  --accent-2: #02a898;
+  --danger: #ca3348;
+
+  font-family: 'Manrope', sans-serif;
+  color: var(--text-main);
+  background-color: var(--bg);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(2, 168, 152, 0.16), transparent 24%),
+    radial-gradient(circle at 88% 14%, rgba(23, 118, 210, 0.2), transparent 28%),
+    linear-gradient(180deg, #f3fbfd 0%, #e8f1f5 100%);
+}
+
+h1,
+h2 {
+  font-family: 'Sora', sans-serif;
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(1.35rem, 2.3vw, 2rem);
+}
+
+h2 {
+  font-size: clamp(1.06rem, 1.5vw, 1.3rem);
+}
+
+p {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
