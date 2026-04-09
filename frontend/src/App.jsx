@@ -18,6 +18,8 @@ function App() {
   const [editingStudentId, setEditingStudentId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [selectedClass, setSelectedClass] = useState('');
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
@@ -75,7 +77,7 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogoutConfirmed = () => {
     localStorage.removeItem('token');
     setToken('');
     setUser(null);
@@ -83,7 +85,22 @@ function App() {
     setTasks([]);
     setEditingStudentId('');
     setShowPassword(false);
+    setShowLogoutConfirm(false);
+    setSelectedClass('');
   };
+
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const getUniqueClasses = () => {
+    const classes = new Set(students.map((s) => s.className));
+    return Array.from(classes).sort();
+  };
+
+  const filteredStudents = selectedClass
+    ? students.filter((student) => student.className === selectedClass)
+    : students;
 
   const handleStudentSubmit = async (event) => {
     event.preventDefault();
@@ -246,7 +263,7 @@ function App() {
           <h1>School Management</h1>
           <p className="subtitle">Signed in as {user?.username || 'admin'}.</p>
         </div>
-        <button type="button" onClick={handleLogout} className="ghost-btn">
+        <button type="button" onClick={handleLogoutClick} className="ghost-btn">
           Logout
         </button>
       </header>
@@ -352,12 +369,31 @@ function App() {
         <article className="panel">
           <div className="panel-header">
             <h2>Students</h2>
-            <span className="pill">{students.length}</span>
+            <span className="pill">{filteredStudents.length}</span>
           </div>
+          {getUniqueClasses().length > 0 ? (
+            <label className="class-filter">
+              Filter by Class
+              <select
+                value={selectedClass}
+                onChange={(event) => setSelectedClass(event.target.value)}
+              >
+                <option value="">All Classes ({students.length})</option>
+                {getUniqueClasses().map((cls) => (
+                  <option key={cls} value={cls}>
+                    {cls} ({students.filter((s) => s.className === cls).length})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           {loading ? <p>Loading students...</p> : null}
           {!loading && students.length === 0 ? <p>No students yet.</p> : null}
+          {!loading && students.length > 0 && filteredStudents.length === 0 ? (
+            <p>No students in {selectedClass}.</p>
+          ) : null}
           <ul className="list-grid">
-            {students.map((student) => (
+            {filteredStudents.map((student) => (
               <li key={student._id}>
                 <div>
                   <strong>{student.name}</strong>
@@ -407,6 +443,23 @@ function App() {
           </ul>
         </article>
       </section>
+
+      {showLogoutConfirm ? (
+        <div className="modal-overlay">
+          <div className="modal-dialog">
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to log out? Any unsaved changes will be lost.</p>
+            <div className="modal-actions">
+              <button type="button" className="ghost-btn" onClick={() => setShowLogoutConfirm(false)}>
+                Cancel
+              </button>
+              <button type="button" className="danger-btn" onClick={handleLogoutConfirmed}>
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
