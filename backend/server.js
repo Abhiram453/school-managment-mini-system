@@ -15,25 +15,25 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const seedDefaultAdmin = async () => {
-  const defaultUsername = 'admin';
-  const defaultPassword = 'admin123';
+const seedDefaultUsers = async () => {
+  const defaultUsers = [
+    { username: 'teacher1', password: 'teacher123', role: 'teacher' },
+    { username: 'student1', password: 'student123', role: 'student' },
+    { username: 'student2', password: 'student123', role: 'student' },
+  ];
 
-  const existingAdmin = await User.findOne({ username: defaultUsername });
-
-  if (existingAdmin) {
-    return;
+  for (const user of defaultUsers) {
+    const existingUser = await User.findOne({ username: user.username });
+    if (!existingUser) {
+      const passwordHash = await bcrypt.hash(user.password, 10);
+      await User.create({
+        username: user.username,
+        passwordHash,
+        role: user.role,
+      });
+      console.log(`Seeded ${user.role} user: ${user.username}`);
+    }
   }
-
-  const passwordHash = await bcrypt.hash(defaultPassword, 10);
-
-  await User.create({
-    username: defaultUsername,
-    passwordHash,
-    role: 'admin',
-  });
-
-  console.log('Default admin user seeded in MongoDB');
 };
 
 app.use(
@@ -58,7 +58,7 @@ app.use((err, req, res, next) => {
 
 const startServer = async () => {
   await connectDB();
-  await seedDefaultAdmin();
+  await seedDefaultUsers();
 
   app.listen(PORT, () => {
     console.log(`Backend running on port ${PORT}`);
