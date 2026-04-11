@@ -1,6 +1,17 @@
 import { useState } from 'react';
 
-function StudentDashboard({ user, tasks, authHeaders, onLogout, loading, error, api }) {
+function StudentDashboard({
+  user,
+  tasks,
+  authHeaders,
+  onLogout,
+  showLogoutConfirm,
+  setShowLogoutConfirm,
+  onLogoutConfirmed,
+  loading,
+  error,
+  api,
+}) {
   const studentTasks = tasks.filter((task) => task.student?._id === user?.studentId || task.student?.username === user?.username);
 
   const handleToggleComplete = async (taskId, currentState) => {
@@ -38,9 +49,15 @@ function StudentDashboard({ user, tasks, authHeaders, onLogout, loading, error, 
             <span className="pill">{studentTasks.length}</span>
           </div>
 
-          {loading ? <p>Loading assignments...</p> : null}
+          {loading ? <p style={{ padding: '1rem 0', color: 'var(--text-soft)' }}>Loading assignments...</p> : null}
           {!loading && studentTasks.length === 0 ? (
-            <p>No assignments yet. Check back later!</p>
+            <div className="empty-state">
+              <div className="empty-state-icon">📚</div>
+              <div className="empty-state-title">No Assignments Yet</div>
+              <div className="empty-state-text">
+                Check back soon! Your teacher will assign tasks here.
+              </div>
+            </div>
           ) : null}
 
           <ul className="list-grid">
@@ -72,6 +89,23 @@ function StudentDashboard({ user, tasks, authHeaders, onLogout, loading, error, 
           </ul>
         </article>
       </section>
+
+      {showLogoutConfirm ? (
+        <div className="modal-overlay">
+          <div className="modal-dialog">
+            <h3>Confirm Logout</h3>
+            <p>Are you sure you want to log out?</p>
+            <div className="modal-actions">
+              <button type="button" className="ghost-btn" onClick={() => setShowLogoutConfirm(false)}>
+                Cancel
+              </button>
+              <button type="button" className="danger-btn" onClick={onLogoutConfirmed}>
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

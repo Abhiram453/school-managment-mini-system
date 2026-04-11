@@ -8,10 +8,21 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 const api = axios.create({ baseURL: API_BASE_URL });
 
+const normalizeRole = (role) => {
+  if (role === 'admin') {
+    return 'teacher';
+  }
+  return role;
+};
+
 function App() {
+  const rememberedUsername = localStorage.getItem('rememberedUsername') || '';
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [user, setUser] = useState(null);
-  const [authForm, setAuthForm] = useState({ username: '', password: '' });
+  const [authForm, setAuthForm] = useState({
+    username: localStorage.getItem('rememberMe') === 'true' ? rememberedUsername : '',
+    password: '',
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [students, setStudents] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -41,17 +52,18 @@ function App() {
         setError('');
 
         const profileRes = await api.get('/auth/me', { headers: authHeaders });
-        setUser(profileRes.data);
+        const normalizedRole = normalizeRole(profileRes.data.role);
+        setUser({ ...profileRes.data, role: normalizedRole });
 
         // Only load students and tasks if teacher
-        if (profileRes.data.role === 'teacher') {
+        if (normalizedRole === 'teacher') {
           const [studentsRes, tasksRes] = await Promise.all([
             api.get('/students', { headers: authHeaders }),
             api.get('/tasks', { headers: authHeaders }),
           ]);
           setStudents(studentsRes.data);
           setTasks(tasksRes.data);
-        } else if (profileRes.data.role === 'student') {
+        } else if (normalizedRole === 'student') {
           // For students, load all tasks (they'll see only their own)
           const tasksRes = await api.get('/tasks', { headers: authHeaders });
           setTasks(tasksRes.data);
@@ -96,7 +108,7 @@ function App() {
         localStorage.removeItem('rememberedUsername');
       }
       setToken(response.data.token);
-      setUser({ username: response.data.username, role: response.data.role });
+      setUser({ username: response.data.username, role: normalizeRole(response.data.role) });
     } catch (loginError) {
       setError(loginError.response?.data?.message || 'Login failed');
     } finally {
@@ -119,14 +131,21 @@ function App() {
 
   const handleLogoutConfirmed = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('rememberMe');
+    localStorage.removeItem('rememberedUsername');
     setToken('');
     setUser(null);
+    setAuthForm({ username: '', password: '' });
+    setRememberMe(false);
     setStudents([]);
     setTasks([]);
+    setStudentForm({ name: '', className: '', age: '' });
+    setTaskForm({ title: '', description: '', studentId: '', dueDate: '' });
     setEditingStudentId('');
     setShowPassword(false);
     setShowLogoutConfirm(false);
     setSelectedClass('');
+    setError('');
   };
 
   const handleLogoutClick = () => {
@@ -267,8 +286,6 @@ function App() {
 
   // LOGIN SCREEN
   if (!token) {
-    const rememberedUsername = localStorage.getItem('rememberedUsername') || '';
-
     return (
       <main className="auth-shell">
         <section className="auth-layout">
@@ -281,25 +298,56 @@ function App() {
 
             <div className="feature-grid">
               <article>
-                <strong>Role-based access</strong>
+                <strong className="feature-title">
+                  <span className="feature-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path d="M12 5a3 3 0 110 6 3 3 0 010-6zm-5.5 12a5.5 5.5 0 0111 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                      <path d="M18.5 8.5h4m-2-2v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                    </svg>
+                  </span>
+                  Role-based access
+                </strong>
                 <p>Teachers and students have separate dashboards.</p>
               </article>
               <article>
-                <strong>JWT secured</strong>
+                <strong className="feature-title">
+                  <span className="feature-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path d="M12 3l7 3v5c0 5-3.2 8.7-7 10-3.8-1.3-7-5-7-10V6l7-3z" stroke="currentColor" strokeWidth="1.8"/>
+                      <path d="M9.5 12.5l1.8 1.8 3.5-3.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </span>
+                  JWT secured
+                </strong>
                 <p>Protected endpoints and session-based access control.</p>
               </article>
               <article>
-                <strong>MongoDB storage</strong>
+                <strong className="feature-title">
+                  <span className="feature-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <ellipse cx="12" cy="6.5" rx="6.5" ry="2.8" stroke="currentColor" strokeWidth="1.8"/>
+                      <path d="M5.5 6.5V15c0 1.5 2.9 2.8 6.5 2.8s6.5-1.3 6.5-2.8V6.5" stroke="currentColor" strokeWidth="1.8"/>
+                      <path d="M5.5 10.8c0 1.5 2.9 2.8 6.5 2.8s6.5-1.3 6.5-2.8" stroke="currentColor" strokeWidth="1.8"/>
+                    </svg>
+                  </span>
+                  MongoDB storage
+                </strong>
                 <p>All records persist in your connected database.</p>
               </article>
             </div>
 
-            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(2, 168, 152, 0.1)', borderRadius: '12px' }}>
-              <p style={{ fontSize: '0.9rem', margin: 0 }}>
-                <strong>Demo Accounts:</strong><br />
-                Teacher: teacher1 / teacher123<br />
-                Student: student1 / student123
-              </p>
+            <div className="demo-accounts">
+              <p className="demo-heading">Demo Accounts</p>
+              <div className="demo-badges">
+                <span className="credential-badge">
+                  <strong>Teacher</strong>
+                  <code>teacher1 / teacher123</code>
+                </span>
+                <span className="credential-badge">
+                  <strong>Student</strong>
+                  <code>student1 / student123</code>
+                </span>
+              </div>
             </div>
           </div>
 
@@ -327,7 +375,6 @@ function App() {
                 onChange={(event) => setAuthForm((prev) => ({ ...prev, username: event.target.value }))}
                 placeholder="Enter username"
                 autoComplete="username"
-                defaultValue={rememberMe && !isSignup ? rememberedUsername : ''}
                 required
               />
             </label>
@@ -375,7 +422,7 @@ function App() {
               </label>
             ) : null}
 
-            <button type="submit" disabled={loading || !readyToSignIn}>
+            <button type="submit" className="auth-submit" disabled={loading || !readyToSignIn}>
               {loading ? (isSignup ? 'Creating...' : 'Signing in...') : isSignup ? 'Create Account' : 'Sign In'}
             </button>
 
@@ -460,10 +507,86 @@ function App() {
         tasks={tasks}
         authHeaders={authHeaders}
         onLogout={() => setShowLogoutConfirm(true)}
+        showLogoutConfirm={showLogoutConfirm}
+        setShowLogoutConfirm={setShowLogoutConfirm}
+        onLogoutConfirmed={handleLogoutConfirmed}
         loading={loading}
         error={error}
         api={api}
       />
+    );
+  }
+
+  // UNKNOWN ROLE FALLBACK (prevents blank page for legacy/bad tokens)
+  if (token && user && user.role !== 'teacher' && user.role !== 'student') {
+    return (
+      <main className="auth-shell">
+        <section className="auth-layout">
+          <div className="auth-marketing">
+            <p className="eyebrow">Gridaan School Suite</p>
+            <h1>Session role is not supported</h1>
+            <p className="subtitle">
+              Detected role: <strong>{String(user.role)}</strong>. Please clear this old session and sign in again.
+            </p>
+          </div>
+
+          <div className="auth-card">
+            <div className="auth-card-header">
+              <div>
+                <p className="eyebrow">Role Check</p>
+                <h2>Action Required</h2>
+              </div>
+              <span className="session-badge">Session</span>
+            </div>
+
+            <p className="subtitle">
+              This usually happens with older tokens from previous versions.
+            </p>
+
+            <button type="button" className="auth-submit" onClick={handleLogoutConfirmed}>
+              Clear Session and Login Again
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  // SESSION FALLBACK (prevents blank page when token exists but profile cannot load)
+  if (token && !user) {
+    return (
+      <main className="auth-shell">
+        <section className="auth-layout">
+          <div className="auth-marketing">
+            <p className="eyebrow">Gridaan School Suite</p>
+            <h1>Restoring your session...</h1>
+            <p className="subtitle">
+              We could not load your profile. This can happen if the backend is down or your session expired.
+            </p>
+          </div>
+
+          <div className="auth-card">
+            <div className="auth-card-header">
+              <div>
+                <p className="eyebrow">Session Check</p>
+                <h2>{loading ? 'Loading profile' : 'Unable to continue'}</h2>
+              </div>
+              <span className="session-badge">Recovery</span>
+            </div>
+
+            {error ? <p className="error-text">{error}</p> : null}
+
+            <div className="button-row">
+              <button type="button" className="auth-submit" onClick={() => window.location.reload()}>
+                Retry
+              </button>
+              <button type="button" className="ghost-btn" onClick={handleLogoutConfirmed}>
+                Clear Session
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
     );
   }
 
